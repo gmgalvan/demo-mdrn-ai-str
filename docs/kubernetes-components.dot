@@ -1,0 +1,92 @@
+digraph KubernetesComponents {
+  graph [
+    rankdir=TB,
+    bgcolor="#ffffff",
+    pad="0.35",
+    nodesep="0.45",
+    ranksep="0.55",
+    splines=polyline,
+    fontname="Inter"
+  ];
+
+  node [
+    shape=rect,
+    style="rounded,filled",
+    fontname="Inter",
+    fontsize=15,
+    margin="0.12,0.09",
+    color="#334155",
+    penwidth=1.3,
+    fillcolor="#f8fafc"
+  ];
+
+  edge [
+    color="#475569",
+    arrowsize=0.75,
+    penwidth=1.3,
+    fontname="Inter",
+    fontsize=12
+  ];
+
+  title [
+    shape=plain,
+    label=<
+      <TABLE BORDER="0" CELLBORDER="0">
+        <TR><TD><FONT POINT-SIZE="28"><B>Kubernetes - Componentes del Demo</B></FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="15">Servicios, deployments, pods y observabilidad dentro del cluster</FONT></TD></TR>
+      </TABLE>
+    >
+  ];
+
+  client [label="Client / Browser", fillcolor="#fef3c7", color="#b45309"];
+
+  subgraph cluster_k8s {
+    label="Kubernetes Cluster";
+    color="#2563eb";
+    penwidth=2;
+    fontsize=20;
+    fontname="Inter";
+    style="rounded";
+
+    subgraph cluster_demo {
+      label="Namespace: demo";
+      color="#16a34a";
+      style="rounded";
+
+      svc_api [label="Service: payment-api\nNodePort 30080 -> 80 -> 8000", fillcolor="#ecfdf5", color="#16a34a"];
+      deploy_api [label="Deployment: payment-api\nreplicas: 2", fillcolor="#f0fdf4", color="#16a34a"];
+      pod_a [label="Pod: payment-api-a\n/health /payments /metrics", fillcolor="#ffffff", color="#16a34a"];
+      pod_b [label="Pod: payment-api-b\n/health /payments /metrics", fillcolor="#ffffff", color="#16a34a"];
+      deploy_broken [label="Deployment: payment-api-v2\nmemory limit: 16Mi", fillcolor="#fff1f2", color="#e11d48"];
+      pod_broken [label="Pod: CrashLoopBackOff\nOOMKilled demo", fillcolor="#ffe4e6", color="#e11d48"];
+    }
+
+    subgraph cluster_obs {
+      label="Namespace: observability";
+      color="#7c3aed";
+      style="rounded";
+
+      prometheus [label="Prometheus\nscrapes /metrics\nNodePort 30090", fillcolor="#f5f3ff", color="#7c3aed"];
+      grafana [label="Grafana\nDashboards\nNodePort 30300", fillcolor="#faf5ff", color="#7c3aed"];
+      loki [label="Loki\nlog storage\nClusterIP 3100", fillcolor="#f5f3ff", color="#7c3aed"];
+      promtail [label="Promtail DaemonSet\ntails pod logs", fillcolor="#faf5ff", color="#7c3aed"];
+    }
+  }
+
+  title -> client [style=invis];
+
+  client -> svc_api [label="HTTP requests"];
+  svc_api -> pod_a [label="load balances"];
+  svc_api -> pod_b [label="load balances"];
+  deploy_api -> pod_a;
+  deploy_api -> pod_b;
+  deploy_broken -> pod_broken;
+
+  prometheus -> svc_api [label="scrape /metrics"];
+  grafana -> prometheus [label="metrics datasource"];
+  grafana -> loki [label="logs datasource"];
+  promtail -> pod_a [label="reads logs", style=dashed];
+  promtail -> pod_b [label="reads logs", style=dashed];
+  promtail -> pod_broken [label="reads events/logs", style=dashed];
+  promtail -> loki [label="push logs"];
+}

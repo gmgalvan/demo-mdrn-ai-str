@@ -1,0 +1,95 @@
+digraph CloudEksArchitecture {
+  graph [
+    rankdir=LR,
+    bgcolor="#ffffff",
+    pad="0.35",
+    nodesep="0.55",
+    ranksep="0.75",
+    splines=polyline,
+    fontname="Inter"
+  ];
+
+  node [
+    shape=rect,
+    style="rounded,filled",
+    fontname="Inter",
+    fontsize=16,
+    margin="0.14,0.10",
+    color="#334155",
+    penwidth=1.4,
+    fillcolor="#f8fafc"
+  ];
+
+  edge [
+    color="#475569",
+    arrowsize=0.8,
+    penwidth=1.4,
+    fontname="Inter",
+    fontsize=12
+  ];
+
+  title [
+    shape=plain,
+    label=<
+      <TABLE BORDER="0" CELLBORDER="0">
+        <TR><TD><FONT POINT-SIZE="28"><B>AWS Cloud - EKS Demo Dev</B></FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="15">Terraform aplica primero networking y despues compute</FONT></TD></TR>
+      </TABLE>
+    >
+  ];
+
+  terraform [label="Operator / Terraform CLI", fillcolor="#fef3c7", color="#b45309"];
+  backend [label="Terraform backend\nS3 state bucket\nDynamoDB lock table", fillcolor="#ecfeff", color="#0891b2"];
+
+  subgraph cluster_aws {
+    label="AWS Account";
+    color="#f59e0b";
+    penwidth=2;
+    fontsize=20;
+    fontname="Inter";
+    style="rounded";
+
+    subgraph cluster_vpc {
+      label="VPC 10.20.0.0/16";
+      color="#2563eb";
+      penwidth=2;
+      fontsize=18;
+      style="rounded";
+
+      igw [label="Internet Gateway", fillcolor="#eff6ff", color="#2563eb"];
+
+      subgraph cluster_public {
+        label="Public subnets";
+        color="#38bdf8";
+        style="rounded";
+
+        alb [label="Public Load Balancer\nfor app ingress", fillcolor="#e0f2fe", color="#0284c7"];
+        nat [label="NAT Gateway\nsingle_nat_gateway=true", fillcolor="#e0f2fe", color="#0284c7"];
+      }
+
+      subgraph cluster_private {
+        label="Private subnets";
+        color="#22c55e";
+        style="rounded";
+
+        nodes [label="EKS managed node group\nt3.small x 1 desired\nmax 2", fillcolor="#ecfdf5", color="#16a34a"];
+        pods [label="payment-api pods\nFastAPI containers", fillcolor="#f0fdf4", color="#16a34a"];
+      }
+    }
+
+    eks [label="EKS control plane\npublic endpoint\ncluster creator admin", fillcolor="#fff7ed", color="#ea580c"];
+  }
+
+  title -> terraform [style=invis];
+  terraform -> backend [label="bootstrap-backend.sh"];
+  terraform -> igw [label="layer 1: networking"];
+  terraform -> eks [label="layer 2: compute"];
+  backend -> terraform [label="remote state + locks", dir=both];
+
+  igw -> alb [label="HTTP/S entry"];
+  alb -> pods [label="Service / Ingress traffic"];
+  nodes -> pods [label="runs"];
+  nodes -> nat [label="egress to internet"];
+  nat -> igw;
+  eks -> nodes [label="manages nodes"];
+}

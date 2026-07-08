@@ -1,0 +1,65 @@
+# webui: Angular frontend for payment-api, served by nginx.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webui
+  namespace: demo
+  labels:
+    app: webui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webui
+  template:
+    metadata:
+      labels:
+        app: webui
+    spec:
+      containers:
+        - name: webui
+          image: webui:demo
+          # Image is loaded into kind with `kind load`; never pull from a registry.
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PAYMENTS_API_URL
+              value: http://payment-api.demo.svc.cluster.local
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webui
+  namespace: demo
+  labels:
+    app: webui
+spec:
+  type: NodePort
+  selector:
+    app: webui
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      nodePort: 30081

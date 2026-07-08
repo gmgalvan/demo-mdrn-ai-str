@@ -1,6 +1,6 @@
 # Payments Service — Possible Next Steps
 
-Ideas for extending [app/routers/payments.py](../app/routers/payments.py)
+Ideas for extending [payments_api/payments_api/routers/payments.py](../payments_api/payments_api/routers/payments.py)
 beyond the current `GET /payments` / `POST /payments`. Not committed work,
 just a backlog to pick from.
 
@@ -31,7 +31,7 @@ Good for practicing diagnosis with Claude Code:
 ## Business metrics
 
 The service already exposes `/metrics` via `prometheus-client`
-([app/main.py](../app/main.py)). A payments counter broken down by
+([payments_api/payments_api/main.py](../payments_api/payments_api/main.py)). A payments counter broken down by
 `status`/`currency` would be more interesting for dashboards than the
 current static `payment_api_info` gauge.
 

@@ -28,7 +28,8 @@ Get the diff with `git diff main...HEAD` and `git status`, then verify:
 
 - Every new endpoint or function must have tests (repo convention:
   one test file per router, using `TestClient`).
-- Run `uv run pytest` and confirm everything passes green.
+- Run `uv run pytest` from inside `payments_api/` and confirm everything
+  passes green.
 
 ### 4. Project conventions (see CLAUDE.md)
 

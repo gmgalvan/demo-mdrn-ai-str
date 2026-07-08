@@ -1,0 +1,61 @@
+<main class="dashboard">
+  <header class="dashboard__header">
+    <h1>payment-api</h1>
+    <span class="badge" [class.badge--ok]="healthStatus === 'ok'" [class.badge--error]="healthError">
+      {{ healthError ? 'unreachable' : (healthStatus ?? 'checking...') }}
+    </span>
+  </header>
+
+  <section class="card">
+    <h2>Payments</h2>
+
+    <p *ngIf="loadError" class="error">Could not load payments from the backend.</p>
+
+    <table *ngIf="payments.length" class="payments-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Amount</th>
+          <th>Currency</th>
+          <th>Description</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let payment of payments">
+          <td>{{ payment.id }}</td>
+          <td>{{ payment.amount | number: '1.2-2' }}</td>
+          <td>{{ payment.currency }}</td>
+          <td>{{ payment.description }}</td>
+          <td>{{ payment.status }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>New payment</h2>
+    <form (ngSubmit)="submitPayment()" #paymentForm="ngForm" class="payment-form">
+      <label>
+        Amount
+        <input type="number" name="amount" [(ngModel)]="newPayment.amount" min="0.01" step="0.01" required />
+      </label>
+
+      <label>
+        Currency
+        <input type="text" name="currency" [(ngModel)]="newPayment.currency" minlength="3" maxlength="3" required />
+      </label>
+
+      <label>
+        Description
+        <input type="text" name="description" [(ngModel)]="newPayment.description" />
+      </label>
+
+      <button type="submit" [disabled]="paymentForm.invalid || submitting">
+        {{ submitting ? 'Saving...' : 'Add payment' }}
+      </button>
+
+      <p *ngIf="submitError" class="error">{{ submitError }}</p>
+    </form>
+  </section>
+</main>

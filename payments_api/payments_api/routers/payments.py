@@ -6,7 +6,7 @@ require a real database.
 
 from fastapi import APIRouter
 
-from app.schemas import Payment, PaymentCreate
+from payments_api.schemas import Payment, PaymentCreate
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 

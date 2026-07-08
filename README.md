@@ -31,13 +31,21 @@ agent:
    │  │   128Mi/256Mi ✅   │
    │  ├── payment-api-v2   │
    │  │   16Mi → OOM 💥    │
-   │  └── svc/payment-api  │
+   │  ├── svc/payment-api  │
+   │  ├── webui (1x)       │
+   │  │   nginx + Angular  │
+   │  └── svc/webui        │
    └───────────────────────┘
 ```
 
 `payment-api` is a payments microservice in Python/FastAPI with mock
 endpoints (`/health`, `/payments`) and in-memory storage. Everything runs
 locally: no cloud dependencies.
+
+`webui` is an Angular frontend for `payment-api` ([webui/](webui/)): it lists
+payments, shows the backend's health status and lets you create new
+payments. It is served by nginx, which reverse-proxies `/api/` to the
+`payment-api` Service so the browser never talks to the backend directly.
 
 ## Requirements
 
@@ -49,23 +57,32 @@ locally: no cloud dependencies.
   - **GitHub MCP server** (Demo 1: branches, commits, PRs)
   - **Kubernetes MCP server** (Demo 2: cluster diagnosis and fix)
 - [uv](https://docs.astral.sh/uv/) to run the app/tests outside Docker
+- [Node.js](https://nodejs.org/) 22+ and npm to run `webui` outside Docker
+  (optional: the demo cluster builds it into an image, no local Node
+  required just to run `setup-demo.sh`)
 - The repo published on GitHub with a configured remote (for Demo 1)
 
 ## Setup (in order)
 
 ```bash
-# 1. Local dependencies to run the tests (with uv)
+# 1. Local dependencies to run the tests (with uv, from inside payments_api/)
+cd payments_api
 uv venv --python 3.12
 uv pip install -r requirements-dev.txt
 uv run pytest   # must pass green
+cd ..
 
-# 2. Cluster + image + healthy deployment (idempotent)
+# 2. Cluster + images (payment-api + webui) + healthy deployment (idempotent)
 ./scripts/setup-demo.sh
 
-# 3. Verify the service responds
+# 3. Verify the API responds
 kubectl port-forward svc/payment-api 8080:80 -n demo &
 curl http://localhost:8080/health        # {"status":"ok"}
 curl http://localhost:8080/payments      # mock list
+
+# 4. Open the web UI
+kubectl port-forward svc/webui 4200:80 -n demo &
+open http://localhost:4200                # or visit it in a browser
 ```
 
 Connect the GitHub and Kubernetes MCP servers in Claude Code
@@ -80,7 +97,8 @@ The exact prompts to paste live are in [PROMPTS-DEMO.md](PROMPTS-DEMO.md).
 1. Make sure you are on `main` with a clean tree and green tests.
 2. Open Claude Code at the repo root and paste the Demo 1 prompt.
 3. The agent implements `/health/detailed`, adds tests, runs
-   `uv run pytest`, creates the `feature/*` branch and opens the PR.
+   `uv run pytest` from inside `payments_api/`, creates the `feature/*`
+   branch and opens the PR.
    **You decide whether it gets merged** (live, the open PR is shown but
    not merged).
 
@@ -115,10 +133,16 @@ kind delete cluster --name demo-ai-devops
 ```
 ├── CLAUDE.md              # Conventions the agent follows live
 ├── PROMPTS-DEMO.md        # Exact prompts for the 2 demos
-├── app/                   # FastAPI microservice (payment-api)
-├── tests/                 # pytest tests (one file per router)
-├── Dockerfile             # Multi-stage, python:3.12-slim
-├── k8s/                   # Manifests: healthy, broken and service
+├── payments_api/          # Self-contained FastAPI microservice (payment-api)
+│   ├── payments_api/      # Python package (main.py, routers/, schemas.py)
+│   ├── tests/             # pytest tests (one file per router)
+│   ├── pyproject.toml, requirements*.txt, uv.lock
+│   └── Dockerfile         # Multi-stage, python:3.12-slim
+├── webui/                 # Angular frontend for payment-api
+│   ├── src/app/           # PaymentsService + PaymentsDashboardComponent
+│   ├── Dockerfile         # Multi-stage, node build + nginx runtime
+│   └── nginx.conf.template  # Static files + /api/ reverse proxy
+├── k8s/                   # Manifests: payment-api, webui, service
 ├── scripts/               # setup / break / reset
 └── .claude/
     ├── skills/            # k8s-diagnostics, pr-workflow

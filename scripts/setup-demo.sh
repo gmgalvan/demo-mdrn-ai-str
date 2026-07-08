@@ -5,6 +5,7 @@ set -euo pipefail
 
 CLUSTER_NAME="demo-ai-devops"
 IMAGE="payment-api:demo"
+WEBUI_IMAGE="webui:demo"
 NAMESPACE="demo"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -35,14 +36,18 @@ fi
 
 kubectl config use-context "kind-$CLUSTER_NAME" >/dev/null
 
-# --- Build and load the image ---
+# --- Build and load the images ---
 echo "==> Building image $IMAGE..."
-docker build -t "$IMAGE" "$REPO_ROOT"
+docker build -t "$IMAGE" "$REPO_ROOT/payments_api"
 
-echo "==> Loading image into the cluster..."
+echo "==> Building image $WEBUI_IMAGE..."
+docker build -t "$WEBUI_IMAGE" "$REPO_ROOT/webui"
+
+echo "==> Loading images into the cluster..."
 kind load docker-image "$IMAGE" --name "$CLUSTER_NAME"
+kind load docker-image "$WEBUI_IMAGE" --name "$CLUSTER_NAME"
 
-# --- Namespace, deployment and service (apply is idempotent) ---
+# --- Namespace, deployments and services (apply is idempotent) ---
 echo "==> Creating namespace '$NAMESPACE'..."
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
@@ -50,13 +55,23 @@ echo "==> Applying healthy deployment and service..."
 kubectl apply -f "$REPO_ROOT/k8s/deployment-healthy.yaml"
 kubectl apply -f "$REPO_ROOT/k8s/service.yaml"
 
+echo "==> Applying webui deployment and service..."
+kubectl apply -f "$REPO_ROOT/k8s/webui-deployment.yaml"
+
 echo "==> Waiting for payment-api to be ready..."
 kubectl rollout status deployment/payment-api -n "$NAMESPACE" --timeout=120s
+
+echo "==> Waiting for webui to be ready..."
+kubectl rollout status deployment/webui -n "$NAMESPACE" --timeout=120s
 
 echo ""
 echo "✅ Demo ready. Status of namespace '$NAMESPACE':"
 kubectl get pods,svc -n "$NAMESPACE"
 echo ""
-echo "To try the service:"
+echo "To try the API directly:"
 echo "  kubectl port-forward svc/payment-api 8080:80 -n $NAMESPACE"
 echo "  curl http://localhost:8080/health"
+echo ""
+echo "To try the web UI:"
+echo "  kubectl port-forward svc/webui 4200:80 -n $NAMESPACE"
+echo "  open http://localhost:4200"

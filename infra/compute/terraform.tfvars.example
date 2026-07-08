@@ -1,0 +1,11 @@
+project_name            = "modern-ai-strategies"
+environment             = "dev"
+aws_region              = "us-east-1"
+terraform_state_bucket  = "modern-ai-strategies-dev-terraform-state-123456789012"
+networking_state_key    = "dev/networking/terraform.tfstate"
+cluster_version         = "1.33"
+node_instance_types     = ["t3.small"]
+node_min_size           = 1
+node_desired_size       = 1
+node_max_size           = 2
+

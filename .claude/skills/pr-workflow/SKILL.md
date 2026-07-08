@@ -12,7 +12,8 @@ opened and a human decides.
 
 ### 1. Verify before committing
 
-- Run `uv run pytest` and confirm everything passes green.
+- Run `uv run pytest` from inside `payments_api/` and confirm everything
+  passes green.
 - Review the full diff (`git diff`) before committing: no secrets, no dead
   code, no accidental files. If the `pr-reviewer` subagent exists, use it
   for this review.
@@ -54,7 +55,7 @@ What the change does and why, in 2-3 lines.
 ## How to test
 
 1. Concrete steps to verify the change locally.
-2. Include the test command: `uv run pytest`.
+2. Include the test command: `uv run pytest` (from `payments_api/`).
 3. If applicable, an example curl/request against the endpoint.
 ```
 

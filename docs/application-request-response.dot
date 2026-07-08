@@ -1,0 +1,77 @@
+digraph ApplicationRequestResponse {
+  graph [
+    rankdir=LR,
+    bgcolor="#ffffff",
+    pad="0.35",
+    nodesep="0.65",
+    ranksep="0.9",
+    splines=polyline,
+    fontname="Inter",
+    labelloc=t,
+    label=<
+      <TABLE BORDER="0" CELLBORDER="0">
+        <TR><TD><FONT POINT-SIZE="28"><B>Aplicacion - Request / Response</B></FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="15">Flujo desde UI/cliente hasta FastAPI y regreso al usuario</FONT></TD></TR>
+      </TABLE>
+    >
+  ];
+
+  node [
+    shape=rect,
+    style="rounded,filled",
+    fontname="Inter",
+    fontsize=15,
+    margin="0.12,0.09",
+    color="#334155",
+    penwidth=1.3,
+    fillcolor="#f8fafc"
+  ];
+
+  edge [
+    color="#475569",
+    arrowsize=0.75,
+    penwidth=1.35,
+    fontname="Inter",
+    fontsize=12
+  ];
+
+  user [label="User", fillcolor="#fef3c7", color="#b45309"];
+  ui [label="Browser / UI\nor curl client", fillcolor="#fff7ed", color="#ea580c"];
+  service [label="Kubernetes Service\npayment-api:80", fillcolor="#e0f2fe", color="#0284c7"];
+  rendered [label="UI renders result\nor curl prints JSON", fillcolor="#fff7ed", color="#ea580c"];
+
+  subgraph cluster_app {
+    label="payment-api container";
+    color="#16a34a";
+    penwidth=2;
+    fontsize=19;
+    fontname="Inter";
+    style="rounded";
+
+    fastapi [label="FastAPI app\npayments_api/main.py", fillcolor="#ecfdf5", color="#16a34a"];
+    router_choice [label="Router dispatch\n/health /payments /metrics", fillcolor="#f0fdf4", color="#16a34a"];
+    validation [label="Pydantic schemas\nvalidate + serialize", fillcolor="#f8fafc", color="#64748b"];
+    store [label="In-memory store\nmock payments", fillcolor="#fefce8", color="#ca8a04"];
+    response [label="Response builder\nstatus code + JSON", fillcolor="#ecfdf5", color="#16a34a"];
+  }
+
+  logs [label="stdout logs", fillcolor="#faf5ff", color="#7c3aed"];
+  metrics [label="GET /metrics", fillcolor="#eef2ff", color="#4f46e5"];
+  obs [label="Prometheus / Grafana / Loki\nmetrics, logs, dashboards", fillcolor="#f5f3ff", color="#7c3aed"];
+
+  user -> ui [label="action"];
+  ui -> service [label="HTTP request\nGET /health\nGET/POST /payments"];
+  service -> fastapi [label="forward to pod:8000"];
+  fastapi -> router_choice [label="route match"];
+  router_choice -> validation [label="request body\nif needed"];
+  validation -> store [label="read/write\npayments"];
+  store -> response [label="domain data"];
+  router_choice -> response [label="/health status"];
+  response -> rendered [label="HTTP response\nstatus + JSON"];
+
+  fastapi -> logs [label="emit", style=dashed];
+  router_choice -> metrics [label="expose", style=dashed];
+  logs -> obs [label="collected", style=dashed];
+  metrics -> obs [label="scraped", style=dashed];
+  obs -> user [label="dashboards", style=dashed, constraint=false];
+}

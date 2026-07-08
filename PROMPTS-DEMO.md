@@ -6,8 +6,8 @@ Copy and paste as-is into Claude Code during the talk.
 
 ## Demo 1 — The agent implements an endpoint and opens a PR
 
-> **Before the demo:** clean repo on `main`, tests green (`uv run pytest`),
-> GitHub MCP server connected.
+> **Before the demo:** clean repo on `main`, tests green
+> (`cd payments_api && uv run pytest`), GitHub MCP server connected.
 
 ```
 Implement a new GET /health/detailed endpoint in payment-api that returns:
@@ -23,10 +23,11 @@ Remember: only open the PR, never merge it.
 ```
 
 **What to expect:** the agent reads `CLAUDE.md`, implements the endpoint in
-`app/routers/health.py` with type hints and an English docstring, adds tests
-in `tests/test_health.py`, runs `uv run pytest`, uses the `pr-workflow`
-skill (and the `pr-reviewer` subagent to review the diff), and opens the PR
-via GitHub MCP. It finishes by showing the PR URL.
+`payments_api/payments_api/routers/health.py` with type hints and an English
+docstring, adds tests in `payments_api/tests/test_health.py`, runs
+`uv run pytest` from inside `payments_api/`, uses the `pr-workflow` skill
+(and the `pr-reviewer` subagent to review the diff), and opens the PR via
+GitHub MCP. It finishes by showing the PR URL.
 
 ---
 
@@ -54,7 +55,7 @@ applies the fix and verifies the pod ends up `Running`.
 
 ## Backup phrases (in case the agent drifts)
 
-- Demo 1, if it does not run the tests: `Run uv run pytest before opening the PR.`
+- Demo 1, if it does not run the tests: `Run uv run pytest (from payments_api/) before opening the PR.`
 - Demo 1, if it tries to commit to main: `Check the branch conventions in CLAUDE.md.`
 - Demo 2, if it tries to apply without permission: `Stop: first show me the diagnosis and the proposed fix.`
 - Demo 2, to close: `Approved, apply the fix and verify the pod becomes healthy.`

@@ -15,10 +15,10 @@ RUN useradd --create-home --shell /usr/sbin/nologin appuser
 WORKDIR /srv/payment-api
 
 COPY --from=builder /install /usr/local
-COPY app/ ./app/
+COPY payments_api/ ./payments_api/
 
 USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "payments_api.main:app", "--host", "0.0.0.0", "--port", "8000"]

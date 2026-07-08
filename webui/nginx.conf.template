@@ -1,0 +1,22 @@
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Reverse-proxied to the payment-api Service so the browser never needs
+    # CORS or to know the backend's address; only PAYMENTS_API_URL changes
+    # between environments (see k8s/webui-deployment.yaml).
+    location /api/ {
+        proxy_pass ${PAYMENTS_API_URL}/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

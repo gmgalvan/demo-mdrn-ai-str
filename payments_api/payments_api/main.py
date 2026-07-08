@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
 from starlette.responses import Response
 
-from app.routers import health, payments
+from payments_api.routers import health, payments
 
 app = FastAPI(
     title="payment-api",

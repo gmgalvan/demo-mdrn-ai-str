@@ -1,0 +1,121 @@
+---
+name: Deploy manifests to EKS
+
+"on":
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (an ECR tag, e.g. latest or sha-xxxxxxx)"
+        required: false
+        default: "latest"
+      deploy_observability:
+        description: "Deploy observability manifests"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'modern-ai-strategies-dev' }}
+  K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE || 'demo' }}
+  ECR_REPOSITORY: payment-api
+
+jobs:
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
+
+      - name: Resolve image
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG_INPUT: ${{ inputs.image_tag }}
+        run: |
+          IMAGE_TAG="${IMAGE_TAG_INPUT:-latest}"
+          IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "Deploying ${IMAGE}"
+
+      - name: Render manifests for EKS
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          mkdir -p /tmp/payment-api-manifests
+
+          sed \
+            -e "s|namespace: demo|namespace: ${K8S_NAMESPACE}|g" \
+            -e "s|image: payment-api:demo|image: ${IMAGE}|g" \
+            -e "s|imagePullPolicy: Never|imagePullPolicy: IfNotPresent|g" \
+            k8s/deployment-healthy.yaml \
+            > /tmp/payment-api-manifests/deployment.yaml
+
+          sed \
+            -e "s|namespace: demo|namespace: ${K8S_NAMESPACE}|g" \
+            k8s/service.yaml > /tmp/payment-api-manifests/service.yaml
+
+      - name: Deploy payment-api
+        run: |
+          kubectl create namespace "$K8S_NAMESPACE" \
+            --dry-run=client \
+            -o yaml |
+            kubectl apply -f -
+
+          kubectl apply -f /tmp/payment-api-manifests/deployment.yaml
+          kubectl apply -f /tmp/payment-api-manifests/service.yaml
+
+          kubectl rollout status deployment/payment-api \
+            -n "$K8S_NAMESPACE" \
+            --timeout=180s
+
+          kubectl get pods,svc -n "$K8S_NAMESPACE"
+
+      - name: Deploy observability
+        if: inputs.deploy_observability
+        run: |
+          kubectl apply -f k8s/observability/namespace.yaml
+          kubectl apply -f k8s/observability/
+
+          kubectl rollout status deployment/prometheus \
+            -n observability \
+            --timeout=180s
+
+          kubectl rollout status deployment/grafana \
+            -n observability \
+            --timeout=180s
+
+          kubectl rollout status deployment/loki \
+            -n observability \
+            --timeout=180s
+
+          kubectl rollout status daemonset/promtail \
+            -n observability \
+            --timeout=180s
+
+          kubectl get pods,svc -n observability

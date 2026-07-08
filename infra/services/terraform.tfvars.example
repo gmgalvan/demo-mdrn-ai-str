@@ -1,0 +1,5 @@
+project_name           = "modern-ai-strategies"
+environment            = "dev"
+aws_region             = "us-east-1"
+repository_names       = ["payment-api", "webui"]
+image_retention_count  = 10
