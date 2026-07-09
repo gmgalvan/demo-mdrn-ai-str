@@ -10,8 +10,6 @@ on:
   pull_request:
     branches:
       - develop
-      - main
-      - master
     paths:
       - "payments_api/**"
       - ".github/workflows/build-payments-api.yml"
