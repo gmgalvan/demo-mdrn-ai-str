@@ -19,12 +19,12 @@ fi
 
 kubectl config use-context "kind-$CLUSTER_NAME" >/dev/null
 
-echo "==> Deleting broken deployment (payment-api-v2) if it exists..."
+echo "==> Deleting old broken deployment (payment-api-v2) if it exists..."
 kubectl delete deployment payment-api-v2 -n "$NAMESPACE" --ignore-not-found
 
-echo "==> Restoring baseline (healthy deployment + service)..."
-kubectl apply -f "$REPO_ROOT/k8s/deployment-healthy.yaml"
-kubectl apply -f "$REPO_ROOT/k8s/service.yaml"
+echo "==> Restoring payment-api deployment and service..."
+kubectl apply -f "$REPO_ROOT/k8s/deployment-payment-api.yaml"
+kubectl apply -f "$REPO_ROOT/k8s/payment-api-service.yaml"
 kubectl rollout status deployment/payment-api -n "$NAMESPACE" --timeout=120s
 
 echo ""

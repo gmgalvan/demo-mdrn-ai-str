@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploys the broken payment-api-v2 (16Mi memory limit -> OOMKilled ->
+# Deploys the broken payment-api (16Mi memory limit -> OOMKilled ->
 # CrashLoopBackOff). Run this right before Demo 2.
 set -euo pipefail
 
@@ -19,14 +19,14 @@ fi
 
 kubectl config use-context "kind-$CLUSTER_NAME" >/dev/null
 
-echo "==> Applying broken deployment (payment-api-v2)..."
-kubectl apply -f "$REPO_ROOT/k8s/deployment-broken.yaml"
+echo "==> Applying broken deployment (payment-api)..."
+kubectl apply -f "$REPO_ROOT/k8s/deployment-payment-api.yaml"
 
 echo "==> Waiting a few seconds for the pod to start failing..."
 sleep 15
 
 echo ""
 echo "💥 Current status (the pod should be in CrashLoopBackOff / OOMKilled):"
-kubectl get pods -n "$NAMESPACE" -l app=payment-api-v2
+kubectl get pods -n "$NAMESPACE" -l app=payment-api
 echo ""
-echo "Ready for Demo 2. Ask the agent to diagnose payment-api-v2."
+echo "Ready for Demo 2. Ask the agent to diagnose payment-api."

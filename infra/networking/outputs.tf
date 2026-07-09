@@ -1,16 +1,16 @@
 output "vpc_id" {
   description = "VPC ID."
-  value       = module.vpc.vpc_id
+  value       = module.vpc.id
 }
 
 output "private_subnet_ids" {
   description = "Private subnet IDs for EKS nodes."
-  value       = module.vpc.private_subnets
+  value       = module.vpc.private_subnet_ids
 }
 
 output "public_subnet_ids" {
   description = "Public subnet IDs for load balancers."
-  value       = module.vpc.public_subnets
+  value       = module.vpc.public_subnet_ids
 }
 
 output "aws_region" {

@@ -1,47 +1,55 @@
 # Terraform infrastructure
 
-Infraestructura demo para desplegar primero la red y despues un cluster EKS
-pequeno en AWS.
+Demo infrastructure to deploy the network first and then a small EKS
+cluster on AWS.
 
-## Capas
+## Layers
 
-- `backend/`: script para crear el bucket S3 y la tabla DynamoDB del backend.
-- `networking/`: VPC, subnets publicas/privadas, NAT Gateway y tags para EKS.
-- `compute/`: cluster EKS y un managed node group pequeno.
-- `services/`: recursos de AWS para los servicios de la app (hoy: repositorios
-  ECR `payment-api` y `webui` donde los workflows de CI publican las
-  imagenes). Independiente de networking/compute, se puede aplicar en
-  cualquier momento.
+- `backend/`: script to create the S3 bucket and DynamoDB table for the backend.
+- `networking/`: VPC, public/private subnets, NAT Gateway and tags for EKS.
+- `compute/`: EKS cluster and a small managed node group.
+- `services/`: AWS resources for the app's services (today: the `payment-api`
+  and `webui` ECR repositories where the CI workflows publish images).
+  Independent of networking/compute, it can be applied at any time.
+- `modules/`: local, reusable Terraform modules (`vpc`, `ecr`) consumed by
+  the layers above. Copied from another project's module library and
+  adapted here — see the comments in `modules/ecr/main.tf` and
+  `networking/main.tf` for the tweaks specific to this repo.
 
-## Requisitos
+## Requirements
 
-- AWS CLI autenticado con permisos para S3, DynamoDB, EC2, IAM y EKS.
+- AWS CLI authenticated with permissions for S3, DynamoDB, EC2, IAM and EKS.
 - Terraform `>= 1.6`.
 
-## Uso
+## Usage
+
+> The commands below use `terraform -chdir=<layer>`, which assumes you're
+> standing in `infra/`. If you've already `cd`-ed into a layer folder
+> (e.g. `infra/services/`), drop the `-chdir=<layer>` prefix and run the
+> plain `terraform init/plan/apply` instead.
 
 ```bash
-# 1. Crear backend remoto y generar backend.dev.hcl en cada capa
+# 1. Create the remote backend and generate backend.dev.hcl in each layer
 cd infra
 ./backend/bootstrap-backend.sh
 
-# 2. Aplicar networking
+# 2. Apply networking
 terraform -chdir=networking init -backend-config=backend.dev.hcl
 terraform -chdir=networking plan -out=networking.tfplan
 terraform -chdir=networking apply networking.tfplan
 
-# 3. Aplicar compute/EKS
+# 3. Apply compute/EKS
 terraform -chdir=compute init -backend-config=backend.dev.hcl
 terraform -chdir=compute plan -out=compute.tfplan
 terraform -chdir=compute apply compute.tfplan
 
-# 4. Aplicar services (ECR; no depende de networking/compute, se puede hacer en paralelo)
+# 4. Apply services (ECR; doesn't depend on networking/compute, can be done in parallel)
 terraform -chdir=services init -backend-config=backend.dev.hcl
 terraform -chdir=services plan -out=services.tfplan
 terraform -chdir=services apply services.tfplan
 ```
 
-Para destruir, hazlo en orden inverso:
+To tear down, do it in reverse order:
 
 ```bash
 terraform -chdir=compute destroy
@@ -49,14 +57,13 @@ terraform -chdir=networking destroy
 terraform -chdir=services destroy
 ```
 
-## Variables comunes
+## Common variables
 
-Cada capa incluye `terraform.tfvars.example`. Si quieres cambiar region, CIDR,
-nombre de proyecto o tamano del node group, copia el ejemplo:
+Each layer includes a `terraform.tfvars.example`. If you want to change the
+region, CIDR, project name or node group size, copy the example:
 
 ```bash
 cp networking/terraform.tfvars.example networking/terraform.tfvars
 cp compute/terraform.tfvars.example compute/terraform.tfvars
 cp services/terraform.tfvars.example services/terraform.tfvars
 ```
-

@@ -51,12 +51,13 @@ kind load docker-image "$WEBUI_IMAGE" --name "$CLUSTER_NAME"
 echo "==> Creating namespace '$NAMESPACE'..."
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-echo "==> Applying healthy deployment and service..."
-kubectl apply -f "$REPO_ROOT/k8s/deployment-healthy.yaml"
-kubectl apply -f "$REPO_ROOT/k8s/service.yaml"
+echo "==> Applying payment-api deployment and service..."
+kubectl apply -f "$REPO_ROOT/k8s/deployment-payment-api.yaml"
+kubectl apply -f "$REPO_ROOT/k8s/payment-api-service.yaml"
 
 echo "==> Applying webui deployment and service..."
 kubectl apply -f "$REPO_ROOT/k8s/webui-deployment.yaml"
+kubectl apply -f "$REPO_ROOT/k8s/webui-service.yaml"
 
 echo "==> Waiting for payment-api to be ready..."
 kubectl rollout status deployment/payment-api -n "$NAMESPACE" --timeout=120s

@@ -1,4 +1,3 @@
-# Healthy deployment: this is the baseline state for the demo.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +6,7 @@ metadata:
   labels:
     app: payment-api
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: payment-api
@@ -26,10 +25,10 @@ spec:
               name: http
           resources:
             requests:
-              memory: "128Mi"
+              memory: "16Mi"
               cpu: "100m"
             limits:
-              memory: "256Mi"
+              memory: "16Mi"
               cpu: "500m"
           livenessProbe:
             httpGet:
