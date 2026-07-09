@@ -29,7 +29,6 @@ stack.
    │ kind: demo-ai-devops  │      │ GitHub (repo)     │
    │  namespace: demo      │      └───────────────────┘
    │  ├── payment-api (1x) │
-   │  │   128Mi/256Mi ✅   │
    │  ├── svc/payment-api  │
    │  ├── webui (1x)       │
    │  │   nginx + Angular  │
