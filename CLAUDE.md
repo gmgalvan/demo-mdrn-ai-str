@@ -33,6 +33,19 @@ build`) runs from within `payments_api/`, never from the repo root.
   built-in `stub_status` (see `webui/nginx.conf.template`), read by an
   `nginx-prometheus-exporter` sidecar (see `k8s/webui-deployment.yaml`) and
   scraped automatically through the annotation-based `kubernetes-pods` job.
+- Container-level CPU/memory (cgroup, not app-level) for any pod in `demo`
+  comes from cAdvisor via the kubelet's API server proxy — the
+  `kubernetes-cadvisor` job in `k8s/observability/prometheus.yaml`, filtered
+  to `namespace="demo"`. No sidecar or app change needed to get this for a
+  new service.
+- Pod restarts and deployment replica health (`kube_pod_container_status_restarts_total`,
+  `kube_deployment_status_replicas_available`, `kube_deployment_spec_replicas`)
+  come from `kube-state-metrics` (`k8s/observability/kube-state-metrics.yaml`,
+  scoped to `--namespaces=demo`), scraped through the same annotation-based
+  `kubernetes-pods` job. That job runs with `honor_labels: true` specifically
+  so kube-state-metrics' own `namespace`/`pod` labels (describing the
+  resources it reports on) aren't overwritten by the scrape target's
+  location — keep that flag if you touch the job.
 - Dashboards are provisioned as code in
   `k8s/observability/grafana-dashboards.yaml` (one ConfigMap per service,
   in the "Services" Grafana folder). Update this file when adding new

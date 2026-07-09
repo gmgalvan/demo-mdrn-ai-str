@@ -55,6 +55,14 @@ data:
               - payment-api.demo.svc.cluster.local:80
 
       - job_name: kubernetes-pods
+        # kube-state-metrics describes *other* pods/deployments (e.g.
+        # namespace="demo") from a target that itself lives in
+        # "observability" -- honor_labels keeps those label values from the
+        # scraped data instead of Prometheus overwriting them with the
+        # scrape target's own namespace/pod (renaming the real value to
+        # exported_namespace/exported_pod). Harmless for the other target on
+        # this job (nginx-exporter), which doesn't emit namespace/pod itself.
+        honor_labels: true
         kubernetes_sd_configs:
           - role: pod
         relabel_configs:
@@ -76,6 +84,38 @@ data:
           - source_labels: [__meta_kubernetes_pod_name]
             action: replace
             target_label: pod
+
+      # Container-level CPU/memory (cAdvisor via the kubelet's API server
+      # proxy). Needs the "nodes/proxy" get permission already granted to
+      # the prometheus ClusterRole above, plus the pod's own ServiceAccount
+      # token/CA (auto-mounted at the paths below) to authenticate to the
+      # kubelet through the API server.
+      - job_name: kubernetes-cadvisor
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+        metric_relabel_configs:
+          # Keep only the demo namespace's real containers: drop other
+          # namespaces and the per-pod "POD" sandbox/pause container.
+          - source_labels: [namespace]
+            regex: demo
+            action: keep
+          - source_labels: [container]
+            regex: POD|
+            action: drop
 ---
 apiVersion: apps/v1
 kind: Deployment
