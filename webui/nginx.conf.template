@@ -19,4 +19,12 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    # Scraped by the nginx-prometheus-exporter sidecar (see
+    # k8s/webui-deployment.yaml); not reachable outside the pod.
+    location /stub_status {
+        stub_status;
+        allow 127.0.0.1;
+        deny all;
+    }
 }

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "prometheus-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "prometheus-mcp@latest",
+        "stdio"
+      ],
+      "env": {
+        "PROMETHEUS_URL": "http://localhost:9090"
+      }
+    }
+  }
+}

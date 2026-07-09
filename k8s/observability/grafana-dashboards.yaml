@@ -1,0 +1,274 @@
+# Provisions the Grafana dashboards below into a "Services" folder,
+# picked up automatically on Grafana startup (and re-synced every 30s).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: observability
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: Services
+        orgId: 1
+        folder: Services
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/services
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-services
+  namespace: observability
+data:
+  payment-api.json: |
+    {
+      "uid": "payment-api-overview",
+      "title": "payment-api",
+      "tags": ["payment-api", "demo"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 2,
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Service Up",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "targets": [
+            {"expr": "up{job=\"payment-api\"}", "legendFormat": "up", "refId": "A"}
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}
+              ]
+            }
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Version",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "targets": [
+            {"expr": "payment_api_info", "legendFormat": "{{version}}", "refId": "A", "instant": true}
+          ]
+        },
+        {
+          "id": 7,
+          "type": "stat",
+          "title": "Request Rate (req/s)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "targets": [
+            {"expr": "sum(rate(http_requests_total{job=\"payment-api\"}[5m]))", "legendFormat": "req/s", "refId": "A"}
+          ]
+        },
+        {
+          "id": 8,
+          "type": "stat",
+          "title": "Error Rate (5xx)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "targets": [
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"payment-api\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"payment-api\"}[5m])), 1e-9)",
+              "legendFormat": "error %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "orange", "value": 1},
+                  {"color": "red", "value": 5}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Requests by status (rate 5m)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"payment-api\"}[5m])) by (status, handler)",
+              "legendFormat": "{{status}} {{handler}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "Latency (p50 / p95 / p99)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "fieldConfig": {"defaults": {"unit": "s"}},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"payment-api\"}[5m])) by (le))",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"payment-api\"}[5m])) by (le))",
+              "legendFormat": "p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"payment-api\"}[5m])) by (le))",
+              "legendFormat": "p99",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Process CPU (rate 5m)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "targets": [
+            {"expr": "rate(process_cpu_seconds_total{job=\"payment-api\"}[5m])", "legendFormat": "cpu", "refId": "A"}
+          ]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Process Memory (RSS)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "targets": [
+            {"expr": "process_resident_memory_bytes{job=\"payment-api\"}", "legendFormat": "rss", "refId": "A"}
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Python GC collections (rate 5m)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "targets": [
+            {"expr": "rate(python_gc_collections_total{job=\"payment-api\"}[5m])", "legendFormat": "gen {{generation}}", "refId": "A"}
+          ]
+        },
+        {
+          "id": 6,
+          "type": "logs",
+          "title": "Logs",
+          "datasource": "Loki",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28},
+          "targets": [
+            {"expr": "{namespace=\"demo\", app=\"payment-api\"}", "refId": "A"}
+          ]
+        }
+      ]
+    }
+  webui.json: |
+    {
+      "uid": "webui-overview",
+      "title": "webui",
+      "tags": ["webui", "demo"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 2,
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Service Up",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "targets": [
+            {"expr": "nginx_up{namespace=\"demo\", pod=~\"webui-.*\"}", "legendFormat": "up", "refId": "A"}
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}
+              ]
+            }
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Request Rate (req/s)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(nginx_http_requests_total{namespace=\"demo\", pod=~\"webui-.*\"}[5m]))",
+              "legendFormat": "req/s",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Nginx Connections",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "targets": [
+            {"expr": "nginx_connections_active{namespace=\"demo\", pod=~\"webui-.*\"}", "legendFormat": "active", "refId": "A"},
+            {"expr": "nginx_connections_reading{namespace=\"demo\", pod=~\"webui-.*\"}", "legendFormat": "reading", "refId": "B"},
+            {"expr": "nginx_connections_writing{namespace=\"demo\", pod=~\"webui-.*\"}", "legendFormat": "writing", "refId": "C"},
+            {"expr": "nginx_connections_waiting{namespace=\"demo\", pod=~\"webui-.*\"}", "legendFormat": "waiting", "refId": "D"}
+          ]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Requests (rate 5m)",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "targets": [
+            {
+              "expr": "sum(rate(nginx_http_requests_total{namespace=\"demo\", pod=~\"webui-.*\"}[5m]))",
+              "legendFormat": "req/s",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "text",
+          "title": "Note",
+          "gridPos": {"h": 3, "w": 24, "x": 0, "y": 12},
+          "options": {
+            "mode": "markdown",
+            "content": "Metrics come from an `nginx-prometheus-exporter` sidecar reading nginx's built-in `stub_status` (see `webui/nginx.conf.template` and `k8s/webui-deployment.yaml`). `stub_status` only reports connection counts and a total request count -- it has no per-route or per-status breakdown, so there is no error-rate panel here (unlike payment-api)."
+          }
+        },
+        {
+          "id": 6,
+          "type": "logs",
+          "title": "Logs",
+          "datasource": "Loki",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 15},
+          "targets": [
+            {"expr": "{namespace=\"demo\", app=\"webui\"}", "refId": "A"}
+          ]
+        }
+      ]
+    }

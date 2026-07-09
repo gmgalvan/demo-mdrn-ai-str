@@ -96,6 +96,16 @@ spec:
           image: grafana/promtail:3.2.1
           args:
             - -config.file=/etc/promtail/promtail.yml
+          env:
+            # Promtail's kubernetes_sd_configs defaults to a
+            # spec.nodeName=$(HOSTNAME) selector so each DaemonSet pod only
+            # watches pods on its own node. Without this, HOSTNAME defaults
+            # to the pod's own name (not the node's), so that filter matches
+            # zero pods and no logs are ever shipped.
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           volumeMounts:
             - name: config
               mountPath: /etc/promtail
