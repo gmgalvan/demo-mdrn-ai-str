@@ -36,6 +36,12 @@ module "eks" {
     demo = {
       name = "${local.name}-demo"
 
+      # The generated IAM role name ("<name>-eks-node-group") is 44 chars,
+      # fine as an exact name (64-char AWS limit) but over the 38-char cap
+      # AWS enforces on IAM name_prefix specifically, which the module uses
+      # by default.
+      iam_role_use_name_prefix = false
+
       instance_types = var.node_instance_types
       capacity_type  = "ON_DEMAND"
 

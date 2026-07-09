@@ -3,13 +3,13 @@ name: Build and publish webui image
 on:
   push:
     branches:
-      - main
-      - master
+      - develop
     paths:
       - "webui/**"
       - ".github/workflows/build-webui.yml"
   pull_request:
     branches:
+      - develop
       - main
       - master
     paths:
@@ -77,7 +77,8 @@ jobs:
         with:
           images: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=raw,value=develop-${{ github.run_number }},enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,prefix=sha-
 
       - name: Build and optionally push image
@@ -85,7 +86,7 @@ jobs:
         with:
           context: ./webui
           file: ./webui/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.ref == 'refs/heads/develop' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

@@ -14,21 +14,24 @@ locals {
 }
 
 module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
+  source = "../modules/vpc"
 
-  name = local.name
-  cidr = var.vpc_cidr
+  name       = local.name
+  aws_region = var.aws_region
+  cidr       = var.vpc_cidr
 
-  azs             = local.azs
-  private_subnets = [for index, _ in local.azs : cidrsubnet(var.vpc_cidr, 8, index)]
-  public_subnets  = [for index, _ in local.azs : cidrsubnet(var.vpc_cidr, 8, index + 100)]
+  availability_zones   = local.azs
+  public_subnet_count  = length(local.azs)
+  private_subnet_count = length(local.azs)
 
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+  # This module only supports a single shared NAT Gateway (no per-AZ HA
+  # mode), which matches this project's cost-conscious default anyway.
+  enable_nat_gateway = var.single_nat_gateway
 
-  enable_nat_gateway = true
-  single_nat_gateway = var.single_nat_gateway
+  # Off by default to avoid extra CloudWatch/IAM resources this demo
+  # doesn't need; the S3 gateway endpoint is free, so it stays on.
+  enable_flow_logs           = false
+  enable_s3_gateway_endpoint = true
 
   public_subnet_tags = {
     "kubernetes.io/role/elb" = "1"
@@ -38,6 +41,5 @@ module "vpc" {
     "kubernetes.io/role/internal-elb" = "1"
   }
 
-  tags = local.tags
+  additional_tags = local.tags
 }
-

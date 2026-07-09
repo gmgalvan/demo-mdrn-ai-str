@@ -1,14 +1,18 @@
-name: PR checks (*-base branches)
+name: PR checks (main/master + *-base branches)
 
+# `branches:` on a pull_request trigger filters by the PR's *target* branch,
+# not the source one -- there's no native filter for "source branch matches
+# a pattern". So this fires on every PR, and each job below gates itself:
+# run when the PR targets main/master (protecting those branches), OR when
+# the PR's *source* branch name ends in "-base" (the demo convention).
 on:
   pull_request:
-    branches:
-      - "*-base"
 
 jobs:
   test:
     name: Unit tests
     runs-on: ubuntu-latest
+    if: github.base_ref == 'main' || github.base_ref == 'master' || endsWith(github.head_ref, '-base')
 
     steps:
       - name: Checkout
@@ -34,6 +38,7 @@ jobs:
   gitleaks:
     name: Gitleaks secret scan
     runs-on: ubuntu-latest
+    if: github.base_ref == 'main' || github.base_ref == 'master' || endsWith(github.head_ref, '-base')
 
     steps:
       - name: Checkout
