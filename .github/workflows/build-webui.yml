@@ -10,8 +10,6 @@ on:
   pull_request:
     branches:
       - develop
-      - main
-      - master
     paths:
       - "webui/**"
       - ".github/workflows/build-webui.yml"
