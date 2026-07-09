@@ -3,15 +3,13 @@ name: Build and publish payment-api image
 on:
   push:
     branches:
-      - main
-      - master
+      - develop
     paths:
       - "payments_api/**"
       - ".github/workflows/build-payments-api.yml"
   pull_request:
     branches:
-      - main
-      - master
+      - develop
     paths:
       - "payments_api/**"
       - ".github/workflows/build-payments-api.yml"
@@ -79,7 +77,8 @@ jobs:
         with:
           images: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=raw,value=develop-${{ github.run_number }},enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,prefix=sha-
 
       - name: Build and optionally push image
