@@ -1,0 +1,100 @@
+name: PR checks (main/master)
+
+# Gate for PRs into main/master: run tests + a validation-only Docker build
+# (never pushed anywhere, no AWS credentials needed) for both services.
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  test-payments-api:
+    name: payments_api - Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            payments_api/requirements.txt
+            payments_api/requirements-dev.txt
+
+      - name: Install dependencies
+        working-directory: payments_api
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Run tests
+        working-directory: payments_api
+        run: pytest
+
+  build-payments-api:
+    name: payments_api - Build
+    runs-on: ubuntu-latest
+    needs: test-payments-api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (validation only, not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./payments_api
+          file: ./payments_api/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  test-webui:
+    name: webui - Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webui
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: webui
+        run: npm test -- --no-watch --no-progress --browsers=ChromeHeadless
+
+  build-webui:
+    name: webui - Build
+    runs-on: ubuntu-latest
+    needs: test-webui
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (validation only, not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./webui
+          file: ./webui/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

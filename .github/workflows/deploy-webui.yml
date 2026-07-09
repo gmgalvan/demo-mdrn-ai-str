@@ -1,0 +1,92 @@
+---
+name: Deploy webui to EKS
+
+"on":
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (an ECR tag, e.g. develop or sha-xxxxxxx)"
+        required: false
+        default: "develop"
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'modern-ai-strategies-dev' }}
+  K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE || 'demo' }}
+  ECR_REPOSITORY: webui
+
+jobs:
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
+
+      - name: Resolve image
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG_INPUT: ${{ inputs.image_tag }}
+        run: |
+          IMAGE_TAG="${IMAGE_TAG_INPUT:-develop}"
+          IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "Deploying ${IMAGE}"
+
+      - name: Render manifests for EKS
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          mkdir -p /tmp/webui-manifests
+
+          sed \
+            -e "s|namespace: demo|namespace: ${K8S_NAMESPACE}|g" \
+            -e "s|image: webui:demo|image: ${IMAGE}|g" \
+            -e "s|imagePullPolicy: Never|imagePullPolicy: IfNotPresent|g" \
+            k8s/webui-deployment.yaml \
+            > /tmp/webui-manifests/deployment.yaml
+
+          sed \
+            -e "s|namespace: demo|namespace: ${K8S_NAMESPACE}|g" \
+            k8s/webui-service.yaml > /tmp/webui-manifests/service.yaml
+
+      - name: Deploy webui
+        run: |
+          kubectl create namespace "$K8S_NAMESPACE" \
+            --dry-run=client \
+            -o yaml |
+            kubectl apply -f -
+
+          kubectl apply -f /tmp/webui-manifests/deployment.yaml
+          kubectl apply -f /tmp/webui-manifests/service.yaml
+
+          kubectl rollout status deployment/webui \
+            -n "$K8S_NAMESPACE" \
+            --timeout=180s
+
+          kubectl get pods,svc -n "$K8S_NAMESPACE"
