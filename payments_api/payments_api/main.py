@@ -1,8 +1,8 @@
 """Entry point for the payment-api application."""
 
 from fastapi import FastAPI
-from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
-from starlette.responses import Response
+from prometheus_client import Gauge
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from payments_api.routers import health, payments
 
@@ -20,12 +20,10 @@ APP_INFO = Gauge(
 )
 APP_INFO.labels(service="payment-api", version=app.version).set(1)
 
-
-@app.get("/metrics", include_in_schema=False)
-def metrics() -> Response:
-    """Expose Prometheus metrics."""
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-
+# Exposes /metrics with HTTP request counters, latency histograms and
+# in-progress gauges (labeled by method, handler and status), in addition
+# to the custom gauges registered above.
+Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 app.include_router(health.router)
 app.include_router(payments.router)

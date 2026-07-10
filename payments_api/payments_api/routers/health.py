@@ -15,4 +15,4 @@ def get_health() -> dict[str, str]:
     Returns:
         Dictionary with the service status.
     """
-    return {"status": "ok"}
+    return {"status": "bien"}

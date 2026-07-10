@@ -2,8 +2,9 @@
 
 Manual, CLI-only procedure to create the IAM role that
 [build-payments-api.yml](../.github/workflows/build-payments-api.yml),
-[build-webui.yml](../.github/workflows/build-webui.yml) and
-[deploy-eks.yml](../.github/workflows/deploy-eks.yml) assume via OIDC
+[build-webui.yml](../.github/workflows/build-webui.yml),
+[deploy-payments-api.yml](../.github/workflows/deploy-payments-api.yml) and
+[deploy-webui.yml](../.github/workflows/deploy-webui.yml) assume via OIDC
 (`aws-actions/configure-aws-credentials`, no access keys). No Terraform —
 just `aws` CLI commands, run once.
 
@@ -164,8 +165,8 @@ decides what it can actually do once connected — that's a separate
 authorization layer. `infra/compute/main.tf` sets
 `enable_cluster_creator_admin_permissions = true`, which only grants admin
 to whoever ran `terraform apply` on that layer — **not** to this new role.
-Without this step, `deploy-eks.yml`'s `kubectl apply` calls will fail with
-`Unauthorized` even though the AWS credentials step succeeds.
+Without this step, the deploy workflows' `kubectl apply` calls will fail
+with `Unauthorized` even though the AWS credentials step succeeds.
 
 ```bash
 ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
@@ -177,14 +178,23 @@ aws eks create-access-entry \
 aws eks associate-access-policy \
   --cluster-name "$EKS_CLUSTER_NAME" \
   --principal-arn "$ROLE_ARN" \
-  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
   --access-scope type=cluster
 ```
 
-`AmazonEKSAdminPolicy` is broad (full admin on the cluster) — fine for this
-demo's single `demo`/`observability` namespaces; narrow it down with a
+Use **`AmazonEKSClusterAdminPolicy`**, not `AmazonEKSAdminPolicy` — they
+sound interchangeable but aren't. `AmazonEKSAdminPolicy` maps to
+Kubernetes' built-in `admin` ClusterRole, which by design excludes
+cluster-scoped resources (Namespaces, Nodes, ClusterRoles, ...). Since
+`deploy-payments-api.yml`/`deploy-webui.yml` run `kubectl create namespace`,
+that policy fails with `Forbidden: cannot create resource "namespaces" ...
+at the cluster scope`. `AmazonEKSClusterAdminPolicy` maps to `cluster-admin`
+(no restrictions) and is what you actually want here. Narrow it down with a
 `namespace`-scoped access scope and a less privileged policy
-(`AmazonEKSEditPolicy`) if you want tighter permissions later.
+(`AmazonEKSEditPolicy`) if you want tighter permissions later — but then
+you'd also need to pre-create the namespaces some other way, since
+namespace-scoped access can't touch the cluster-scoped Namespace resource
+at all.
 
 ## 7. Get the role ARN and set the GitHub secret
 
@@ -200,8 +210,9 @@ Secrets → New repository secret**, name `AWS_ROLE_TO_ASSUME`, paste the ARN.
 Push a small change to `payments_api/` on `develop` (or run
 `build-payments-api.yml` via `workflow_dispatch`) and check the "Configure
 AWS credentials" and "Log in to Amazon ECR" steps succeed. For
-`deploy-eks.yml`, run it manually (`workflow_dispatch`) and confirm the
-`kubectl apply` steps don't error with `Unauthorized`.
+`deploy-payments-api.yml`/`deploy-webui.yml`, run them manually
+(`workflow_dispatch`) and confirm the `kubectl apply` steps don't error with
+`Unauthorized` or `Forbidden`.
 
 ## Rollback
 
@@ -211,7 +222,7 @@ To undo everything from this doc:
 aws eks disassociate-access-policy \
   --cluster-name "$EKS_CLUSTER_NAME" \
   --principal-arn "$ROLE_ARN" \
-  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
 
 aws eks delete-access-entry \
   --cluster-name "$EKS_CLUSTER_NAME" \

@@ -16,7 +16,7 @@ def test_health_returns_200() -> None:
 def test_health_returns_status_ok() -> None:
     """GET /health must return status ok."""
     response = client.get("/health")
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "bien"}
 
 
 def test_metrics_endpoint_exposes_prometheus_metrics() -> None:

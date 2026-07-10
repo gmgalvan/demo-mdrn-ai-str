@@ -57,3 +57,7 @@ Thumbs.db
 # Local agent/workspace state
 .agents/
 .codex/
+
+# Local Claude Code MCP config (loaded from repo root); the tracked
+# reference copy lives in .claude/mcp/.mcp.json -- see CLAUDE.md.
+/.mcp.json
